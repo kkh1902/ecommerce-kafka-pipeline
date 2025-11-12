@@ -228,50 +228,6 @@ LIMIT 5;
 (3 rows)
 ```
 
----
-
-## 서비스 관리
-
-### 서비스 시작/중지
-
-```bash
-# 모든 서비스 시작
-cd docker
-docker-compose up -d
-
-# 특정 서비스만 시작 (인프라만)
-docker-compose up -d zookeeper kafka postgres
-
-# 특정 서비스만 시작 (애플리케이션만)
-docker-compose up -d producer consumer-postgres spark-streaming
-
-# 서비스 중지
-docker-compose down
-
-# 서비스 중지 + 데이터 삭제
-docker-compose down -v
-
-# 서비스 재시작
-docker-compose restart producer
-docker-compose restart consumer-postgres
-docker-compose restart spark-streaming
-```
-
-### 서비스 재빌드
-
-코드를 수정한 경우 이미지를 재빌드해야 합니다:
-
-```bash
-# 모든 서비스 재빌드
-docker-compose up -d --build
-
-# 특정 서비스만 재빌드
-docker-compose up -d --build producer
-docker-compose up -d --build consumer-postgres
-docker-compose up -d --build spark-streaming
-```
-
----
 
 ## 데이터베이스 스키마
 
@@ -325,161 +281,6 @@ Spark Streaming이 계산하는 실시간 통계
 
 ---
 
-## 트러블슈팅
-
-### 1. 서비스가 시작되지 않는 경우
-
-```bash
-# 모든 컨테이너 상태 확인
-cd docker
-docker-compose ps
-
-# 특정 서비스 로그 확인
-docker-compose logs kafka
-docker-compose logs postgres
-docker-compose logs producer
-
-# 모든 로그 확인
-docker-compose logs
-```
-
-### 2. Kafka 연결 실패
-
-**증상**: Producer/Consumer가 "Kafka 연결 실패" 메시지 표시
-
-**해결 방법**:
-```bash
-# Kafka와 Zookeeper 상태 확인
-docker-compose ps zookeeper kafka
-
-# Kafka가 healthy 상태가 될 때까지 대기
-docker-compose up -d kafka
-docker-compose ps kafka
-
-# Kafka 로그 확인
-docker-compose logs kafka
-
-# Kafka 재시작
-docker-compose restart kafka
-```
-
-### 3. PostgreSQL 연결 실패
-
-**증상**: Consumer/Spark가 "PostgreSQL 연결 실패" 메시지 표시
-
-**해결 방법**:
-```bash
-# PostgreSQL 상태 확인
-docker-compose ps postgres
-
-# PostgreSQL 로그 확인
-docker-compose logs postgres
-
-# PostgreSQL 재시작
-docker-compose restart postgres
-
-# 직접 연결 테스트
-docker exec -it postgres psql -U admin -d ecommerce -c "SELECT 1;"
-```
-
-### 4. Producer가 데이터를 보내지 않는 경우
-
-**증상**: Producer 로그에 아무 메시지도 표시되지 않음
-
-**해결 방법**:
-```bash
-# Producer 재시작
-docker-compose restart producer
-
-# Producer 로그 확인
-docker-compose logs -f producer
-
-# 데이터 파일 확인
-docker exec producer ls -lh /app/data/raw/events.csv
-```
-
-### 5. Spark Streaming 에러 (Windows)
-
-**증상**: `winutils.exe` 호환성 에러
-
-**해결 방법**:
-```bash
-# Spark 컨테이너는 Linux 환경에서 실행되므로 winutils 문제 없음
-# 만약 Windows에서 직접 실행하는 경우:
-# 1. 올바른 winutils.exe 다운로드
-# 2. HADOOP_HOME 환경변수 설정
-# 3. 또는 Docker로 실행 (권장)
-docker-compose up -d spark-streaming
-```
-
-### 6. 데이터가 PostgreSQL에 저장되지 않는 경우
-
-**해결 방법**:
-```bash
-# Consumer 상태 확인
-docker-compose ps consumer-postgres spark-streaming
-
-# Consumer 로그 확인
-docker-compose logs consumer-postgres
-docker-compose logs spark-streaming
-
-# PostgreSQL에서 테이블 확인
-docker exec -it postgres psql -U admin -d ecommerce -c "\dt"
-
-# 데이터 확인
-docker exec -it postgres psql -U admin -d ecommerce -c "SELECT COUNT(*) FROM clickstream_events;"
-docker exec -it postgres psql -U admin -d ecommerce -c "SELECT COUNT(*) FROM live_clickstream_events;"
-```
-
-### 7. 포트 충돌
-
-**증상**: "port already allocated" 에러
-
-**해결 방법**:
-```bash
-# 포트 사용 중인 프로세스 확인 (Windows)
-netstat -ano | findstr :9092   # Kafka
-netstat -ano | findstr :5432   # PostgreSQL
-
-# 포트 사용 중인 프로세스 확인 (Mac/Linux)
-lsof -i :9092   # Kafka
-lsof -i :5432   # PostgreSQL
-
-# 기존 컨테이너 완전히 제거 후 재시작
-docker-compose down
-docker-compose up -d
-```
-
-### 8. 디스크 공간 부족
-
-**해결 방법**:
-```bash
-# Docker 디스크 사용량 확인
-docker system df
-
-# 사용하지 않는 이미지/컨테이너 정리
-docker system prune -a
-
-# 볼륨까지 삭제 (주의: 데이터 삭제됨)
-docker system prune -a --volumes
-```
-
-### 9. 모든 서비스 완전히 초기화
-
-```bash
-# 모든 컨테이너와 데이터 삭제
-cd docker
-docker-compose down -v
-
-# 이미지 재빌드
-docker-compose build --no-cache
-
-# 서비스 재시작
-docker-compose up -d
-
-# 로그 확인
-docker-compose logs -f
-```
 
 ---
 
@@ -503,116 +304,62 @@ docker-compose logs -f
 - `psycopg2-binary 2.9.9`: PostgreSQL 드라이버
 - `python-dotenv 1.0.0`: 환경변수 관리
 
----
 
-## 프로젝트 중단
-
-```bash
-# 모든 서비스 중지
-cd docker
-docker-compose down
-
-# 데이터까지 삭제 (주의: PostgreSQL 데이터도 삭제됨)
-docker-compose down -v
-
-# 특정 서비스만 중지
-docker-compose stop producer
-docker-compose stop consumer-postgres
-docker-compose stop spark-streaming
-```
 
 ---
 
 ## TODO 및 개선 사항
 
-### 1. ML 학습 파이프라인 구축 🔴 (우선순위: 높음)
+### 1. ML 학습 파이프라인 구축 
 
 **목표**: 클릭스트림 데이터를 기반으로 상품 추천 모델 학습
 
 **작업 내용**:
-- [ ] 협업 필터링 기반 추천 모델 구현
-  - User-based Collaborative Filtering
-  - Item-based Collaborative Filtering
-- [ ] 모델 평가 메트릭 구현 (Precision, Recall, F1-Score)
+- [ ]  추천 모델 구현
+- [ ] 모델 평가 구현
 - [ ] 모델 학습 스크립트 작성 (`src/ml/train_model.py`)
 - [ ] 학습된 모델 저장 (`models/*.pkl`)
 - [ ] Airflow DAG 연동 (일일 재학습 자동화)
 
-**관련 파일**:
-- `src/ml/recommendation_model.py`
-- `src/ml/data_preparation.py`
-- `airflow/dags/daily_model_training.py`
 
-**예상 소요 시간**: 2-3일
 
 ---
 
-### 2. ML 데이터 준비 및 전처리 🟡 (우선순위: 중간)
+### 2. ML 데이터 준비 및 전처리 
 
 **목표**: 학습에 필요한 데이터 준비 및 특징 엔지니어링
 
 **작업 내용**:
 - [ ] PostgreSQL에서 학습 데이터 추출
   - `clickstream_events` 테이블에서 view, addtocart, transaction 이벤트 추출
-  - 사용자-상품 상호작용 매트릭스 생성
 - [ ] 데이터 전처리
-  - 결측치 처리
-  - 이상치 제거
-  - 데이터 정규화
+
 - [ ] 특징 엔지니어링
   - 사용자 행동 패턴 특징 추출
   - 상품 인기도 특징 추출
   - 시간대별 특징 추출
 - [ ] 학습/검증/테스트 데이터 분리 (70/15/15)
 
-**관련 파일**:
-- `src/ml/data_preparation.py`
-- `sql/ml_queries.sql` (생성 필요)
-
-**예상 소요 시간**: 1-2일
 
 ---
 
-### 3. Producer 전송 속도 최적화 🟡 (우선순위: 중간)
+### 3. Producer 전송 속도 최적화 
 
 **목표**: 초당 메시지 처리량 제한 및 안정적인 스트리밍
 
 **현재 상태**:
-- 4초 간격으로 1개씩 전송 (초당 0.25개)
-- 배치 모드: 지연 없이 빠른 전송
+- 지금 엄청 느리게 들어감
 
 **개선 사항**:
-- [ ] 초당 메시지 처리량 설정 옵션 추가
-  - `--messages-per-second` 옵션 추가
-  - 예: `--messages-per-second 100` → 초당 100개 전송
-- [ ] 배치 크기 조절 기능
-  - `--batch-size` 옵션 추가
-  - 예: `--batch-size 1000` → 1000개씩 묶어서 전송
-- [ ] 백프레셔(Backpressure) 처리
-  - Kafka 브로커 부하 모니터링
-  - 자동 전송 속도 조절
-- [ ] 프로메테우스 메트릭 추가
-  - 전송 속도 (messages/sec)
-  - 전송 실패율
-  - 평균 레이턴시
+- [ ] 속도 증가
+- [ ] 배치 설계
+- [ ] 에러 처리
 
-**관련 파일**:
-- `src/producer/producer.py`
 
-**예상 코드 예시**:
-```bash
-# 초당 1000개 전송 (안정적인 스트리밍)
-python src/producer/producer.py --messages-per-second 1000
-
-# 초당 100개씩 1000개 배치로 전송
-python src/producer/producer.py --messages-per-second 100 --batch-size 1000
-```
-
-**예상 소요 시간**: 1일
 
 ---
 
-### 4. 실시간 대시보드 구현 🟢 (우선순위: 낮음)
+### 4. 실시간 대시보드 구현  
 
 **작업 내용**:
 - [ ] Streamlit 대시보드 구현
@@ -622,11 +369,10 @@ python src/producer/producer.py --messages-per-second 100 --batch-size 1000
   - 인기 상품 Top 10
 - [ ] Docker Compose에 대시보드 서비스 추가
 
-**예상 소요 시간**: 2-3일
 
 ---
 
-### 5. API 서버 구현 🟢 (우선순위: 낮음)
+### 5. API 서버 구현 
 
 **작업 내용**:
 - [ ] FastAPI 추천 엔드포인트 구현
@@ -635,18 +381,16 @@ python src/producer/producer.py --messages-per-second 100 --batch-size 1000
 - [ ] API 문서 자동 생성 (Swagger)
 - [ ] Docker Compose에 API 서비스 추가
 
-**예상 소요 시간**: 2일
 
 ---
 
-### 6. 모니터링 및 알림 🟡 (우선순위: 중간)
+### 6. 모니터링 및 알림 
 
 **작업 내용**:
 - [ ] Slack 알림 연동 (에러 발생 시)
 - [ ] Prometheus + Grafana 모니터링
 - [ ] 로그 수집 (ELK Stack)
 
-**예상 소요 시간**: 2-3일
 
 ---
 
@@ -654,23 +398,11 @@ python src/producer/producer.py --messages-per-second 100 --batch-size 1000
 
 | 순위 | 작업 | 우선순위 | 예상 기간 |
 |------|------|----------|-----------|
-| 1 | ML 학습 파이프라인 구축 | 🔴 높음 | 2-3일 |
-| 2 | ML 데이터 준비 및 전처리 | 🟡 중간 | 1-2일 |
-| 3 | Producer 전송 속도 최적화 | 🟡 중간 | 1일 |
-| 4 | 모니터링 및 알림 | 🟡 중간 | 2-3일 |
-| 5 | 실시간 대시보드 구현 | 🟢 낮음 | 2-3일 |
-| 6 | API 서버 구현 | 🟢 낮음 | 2일 |
+| 1 | ML 학습 파이프라인 구축 | 높음 | 2-3일 |
+| 2 | ML 데이터 준비 및 전처리 | 중간 | 1-2일 |
+| 3 | Producer 전송 속도 최적화 | 중간 | 1일 |
+| 4 | 모니터링 및 알림 |  중간 | 2-3일 |
+| 5 | 실시간 대시보드 구현 | 낮음 | 2-3일 |
+| 6 | API 서버 구현 | 낮음 | 2일 |
 
-**권장 작업 순서**: 2 → 1 → 3 → 6 → 4 → 5
 
----
-
-## 라이센스
-
-MIT License
-
----
-
-## 문의
-
-프로젝트 관련 문의사항은 이슈를 등록해주세요.
