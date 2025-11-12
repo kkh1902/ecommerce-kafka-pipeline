@@ -1,0 +1,51 @@
+# Data files (large size)
+data/raw/*.csv
+data/raw/backup/
+data/processed/
+data/analytics/
+data/models/
+data/error/
+
+# Environment
+.env
+*.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Airflow
+airflow/logs/
+airflow/__pycache__/
+
+# Spark
+spark-checkpoint/
+spark-warehouse/
+
+# Hadoop
+hadoop/
+
+# Models
+models/*.pkl
+models/*.joblib
+
+# Docker volumes
+postgres-data/
+postgres-airflow-data/
+
+# Node modules
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# OS
+.DS_Store
+Thumbs.db
