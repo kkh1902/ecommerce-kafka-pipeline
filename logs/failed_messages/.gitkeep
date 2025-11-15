@@ -1,0 +1,2 @@
+# This directory stores failed Kafka messages
+# Format: YYYY-MM-DD.jsonl
